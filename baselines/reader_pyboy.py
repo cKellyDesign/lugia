@@ -77,6 +77,9 @@ class ReaderPyBoy:
 
     def read_seen_pokemons(self):
         return [self.bit_count(self.read_m(a)) for a in SEEN_POKEMONS_ADDRESSES]
+    
+    def read_battle_type(self):
+        return self.read_m(BATTLE_TYPE_ADDRESS)
 
     def get_map_location(self):
         map_locations = {
