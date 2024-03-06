@@ -81,6 +81,9 @@ class Reward:
         # Initing index - the maximum number of elements should be known beforehand
         self.knn_index.init_index(max_elements=self.num_elements, ef_construction=100, M=16)
 
+        self.knn_compare = hnswlib.Index(space='l2', dim=self.vec_dim)
+        self.knn_compare.init_index(max_elements=2, ef_construction=500, M=16, allow_replace_deleted = True)
+
     def init_map_mem(self):
         self.seen_coords = {}
 
@@ -110,11 +113,20 @@ class Reward:
                 rewards['explore'] * 150 / (self.explore_weight * self.reward_scale))
 
     def update_rewards(self, obs_flat, step_count):
-        if self.use_screen_explore:
-            self.update_frame_knn_index(obs_flat)
-        else:
-            self.update_seen_coords(step_count)
-        self.update_exploration_reward()
+        # only update explore reward ifnot in battle
+        if self.reader.read_battle_type() == 0:
+            distance = self.get_distance_from_last_frame(obs_flat)
+            if distance > 50000:
+                #if distance is big enough, update knn index
+                if self.use_screen_explore:
+                    self.update_frame_knn_index(obs_flat)
+                else:
+                    self.update_seen_coords(step_count)
+                self.update_exploration_reward()
+            else:
+                # if distance is very small, ddecay xplore reward until successful explore
+                self.cur_size *= 0.9
+                print(f'Explore Decay: {self.cur_size}')
         self.update_max_event()
         self.update_total_heal_and_death()
         self.update_max_op_level()
@@ -148,6 +160,21 @@ class Reward:
     def update_max_level(self):
         # lvl can't decrease
         self.max_level = max(self.max_level, self.reader.get_levels_sum())
+
+    def get_distance_from_last_frame(self, frame_vec):
+        if self.knn_compare.get_current_count() == 0:
+            self.knn_compare.add_items(
+                frame_vec, np.array([self.knn_compare.get_current_count()])
+            )
+            return self.similar_frame_dist
+        else:
+            labels, distances = self.knn_compare.knn_query(frame_vec, k=1)
+            self.knn_compare.mark_deleted(labels[0])
+            self.knn_compare.add_items(
+                frame_vec, np.array([self.knn_compare.get_current_count()]), replace_deleted = True
+            )
+            return distances[0][0]
+            
 
     def update_frame_knn_index(self, frame_vec):
 
