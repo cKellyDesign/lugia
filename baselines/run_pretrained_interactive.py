@@ -7,6 +7,7 @@ from stable_baselines3.common import env_checker
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.callbacks import CheckpointCallback
+from stream_agent_wrapper import StreamWrapper
 
 def make_env(rank, env_conf, seed=0):
     """
@@ -18,6 +19,17 @@ def make_env(rank, env_conf, seed=0):
     """
     def _init():
         env = RedGymEnv(env_conf)
+        if 'broadcast' in env_conf and env_conf['broadcast']:
+            print('Init Stream Wrapper')
+            env = StreamWrapper(
+                env,
+                stream_metadata = { # All of this is part is optional
+                    "user": "red", # choose your own username
+                    "env_id": str(uuid.uuid4())[:8] if 'instance_id' not in env_conf else env_conf['instance_id'], # environment identifier
+                    "color": "#0033ff", # choose your color :)
+                    "extra": "", # any extra text you put here will be displayed
+                }
+            )
         #env.seed(seed + rank)
         return env
     set_random_seed(seed)
@@ -29,10 +41,10 @@ if __name__ == '__main__':
     ep_length = 2**23
 
     env_config = {
-                'headless': False, 'save_final_state': True, 'early_stop': False,
+                'headless': False, 'save_final_state': True, 'early_stop': False, 'instance_id': str(uuid.uuid4())[:8],
                 'action_freq': 24, 'init_state': '../has_pokedex_nballs.state', 'max_steps': ep_length, 
                 'print_rewards': True, 'save_video': False, 'fast_video': True, 'session_path': sess_path,
-                'gb_path': '../PokemonRed.gb', 'debug': False, 'sim_frame_dist': 2_000_000.0, 'extra_buttons': True
+                'gb_path': '../PokemonRed.gb', 'debug': False, 'sim_frame_dist': 2_000_000.0, 'extra_buttons': True, 'broadcast': False
             }
     
     num_cpu = 1 #64 #46  # Also sets the number of episodes per training iteration
