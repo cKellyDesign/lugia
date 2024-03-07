@@ -7,10 +7,11 @@ import gymnasium as gym
 X_POS_ADDRESS, Y_POS_ADDRESS = 0xD362, 0xD361
 MAP_N_ADDRESS = 0xD35E
 
+SOCKET_ADDRESS = "ws://localhost:8080/broadcast" #"wss://transdimensional.xyz/broadcast"
 class StreamWrapper(gym.Wrapper):
     def __init__(self, env, stream_metadata={}):
         super().__init__(env)
-        self.ws_address = "wss://transdimensional.xyz/broadcast"
+        self.ws_address = SOCKET_ADDRESS
         self.stream_metadata = stream_metadata
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
